@@ -1,0 +1,372 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+  <title>لبان اي بي تي في | Luban IPTV v4.5.0 Aesthetic Pro</title>
+  
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Arabic:wght@300;400;500;600;700;800&display=swap" rel="stylesheet">
+
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script src="https://cdn.jsdelivr.net/npm/hls.js@latest"></script>
+  <script src="https://unpkg.com/lucide@latest"></script>
+
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          fontFamily: {
+            sans: ['"IBM Plex Sans Arabic"', 'sans-serif'],
+          },
+          colors: {
+            luban: {
+              gold: '#f59e0b',
+              goldLight: '#fbbf24',
+              emerald: '#10b981',
+              emeraldDark: '#064e3b',
+              deep: '#030712',
+              card: 'rgba(15, 23, 42, 0.75)',
+              glass: 'rgba(255, 255, 255, 0.03)',
+              border: 'rgba(255, 255, 255, 0.08)',
+              borderActive: 'rgba(245, 158, 11, 0.4)'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <style>
+    body {
+      background: radial-gradient(circle at top right, #091a18 0%, #030712 55%, #020408 100%);
+      background-attachment: fixed;
+    }
+    
+    ::-webkit-scrollbar { width: 4px; height: 4px; }
+    ::-webkit-scrollbar-track { background: transparent; }
+    ::-webkit-scrollbar-thumb { background: rgba(255, 255, 255, 0.15); border-radius: 9999px; }
+    ::-webkit-scrollbar-thumb:hover { background: #10b981; }
+
+    .glow-gold { box-shadow: 0 0 25px -5px rgba(245, 158, 11, 0.3); }
+    .glow-emerald { box-shadow: 0 0 25px -5px rgba(16, 185, 129, 0.3); }
+
+    .tv-focus-target:focus, .tv-focused {
+      outline: none !important;
+      border-color: #f59e0b !important;
+      box-shadow: 0 0 0 3px rgba(245, 158, 11, 0.4), 0 16px 32px rgba(0, 0, 0, 0.9) !important;
+      transform: translateY(-3px) scale(1.02) !important;
+      z-index: 30 !important;
+      transition: all 0.25s cubic-bezier(0.16, 1, 0.3, 1);
+    }
+
+    body.tv-mode-active { font-size: 1.15rem; }
+    body.tv-mode-active .nav-tab { padding: 0.85rem 1.6rem; font-size: 1rem; }
+  </style>
+</head>
+<body class="bg-luban-deep text-gray-100 min-h-screen flex flex-col select-none overflow-x-hidden antialiased">
+
+  <!-- TOP BAR -->
+  <header class="h-20 border-b border-luban-border bg-luban-deep/80 backdrop-blur-2xl sticky top-0 z-40 px-4 md:px-8 flex items-center justify-between gap-4">
+    <div class="flex items-center gap-3.5">
+      <div class="relative group cursor-pointer">
+        <div class="w-12 h-12 rounded-2xl bg-gradient-to-tr from-emerald-950 via-luban-emeraldDark to-luban-gold flex items-center justify-center shadow-xl shadow-emerald-950/60 border border-luban-gold/30">
+          <i data-lucide="flame" class="w-6 h-6 text-white drop-shadow"></i>
+        </div>
+        <span class="absolute -bottom-1 -right-1 w-3.5 h-3.5 bg-emerald-500 rounded-full border-2 border-luban-deep"></span>
+      </div>
+      <div>
+        <div class="flex items-center gap-2">
+          <h1 class="text-lg md:text-xl font-extrabold tracking-tight bg-gradient-to-r from-emerald-300 via-amber-200 to-yellow-400 bg-clip-text text-transparent">لبان اي بي تي في</h1>
+          <span class="text-[9px] font-mono px-2 py-0.5 rounded-full bg-luban-gold/15 text-luban-gold border border-luban-gold/30 font-bold tracking-wider">v4.5.0 Pro</span>
+        </div>
+        <p class="text-[11px] text-gray-400 flex items-center gap-1.5 mt-0.5">
+          <span>المطور:</span>
+          <span class="text-amber-400 font-semibold flex items-center gap-1">
+            Mohammed Fadhil
+            <i data-lucide="badge-check" class="w-3.5 h-3.5 fill-amber-400 text-black inline"></i>
+          </span>
+        </p>
+      </div>
+    </div>
+
+    <!-- TABS -->
+    <nav class="hidden md:flex items-center bg-black/40 backdrop-blur-xl p-1.5 rounded-2xl border border-luban-border">
+      <button onclick="switchTab('home')" id="tab-home" tabindex="0" class="tv-focus-target nav-tab px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 text-white bg-luban-emeraldDark glow-emerald">
+        <i data-lucide="layout-grid" class="w-4 h-4 text-luban-gold"></i>
+        <span>الواجهة</span>
+      </button>
+      <button onclick="switchTab('live')" id="tab-live" tabindex="0" class="tv-focus-target nav-tab px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 text-gray-400 hover:text-white">
+        <i data-lucide="radio" class="w-4 h-4"></i>
+        <span>القنوات و EPG</span>
+      </button>
+      <button onclick="switchTab('movies')" id="tab-movies" tabindex="0" class="tv-focus-target nav-tab px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 text-gray-400 hover:text-white">
+        <i data-lucide="film" class="w-4 h-4"></i>
+        <span>الأفلام</span>
+      </button>
+      <button onclick="switchTab('series')" id="tab-series" tabindex="0" class="tv-focus-target nav-tab px-4 py-2 rounded-xl text-xs font-bold transition flex items-center gap-2 text-gray-400 hover:text-white">
+        <i data-lucide="tv-2" class="w-4 h-4"></i>
+        <span>المسلسلات</span>
+      </button>
+    </nav>
+
+    <!-- CONTROLS -->
+    <div class="flex items-center gap-2.5">
+      <button onclick="toggleMultiViewMode()" tabindex="0" class="tv-focus-target hidden sm:flex items-center gap-1.5 px-3 py-2 rounded-xl text-xs font-bold bg-luban-glass hover:bg-white/5 border border-luban-border text-luban-gold transition">
+        <i data-lucide="grid-2x2" class="w-4 h-4"></i>
+        <span>متعدد الشاشات</span>
+      </button>
+      <button onclick="openSettingsSidebar()" tabindex="0" class="tv-focus-target px-3.5 py-2 rounded-xl text-xs font-bold bg-luban-glass hover:bg-white/5 border border-luban-border text-gray-200 transition flex items-center gap-2">
+        <i data-lucide="sliders-horizontal" class="w-4 h-4 text-emerald-400"></i>
+        <span>الضبط</span>
+      </button>
+    </div>
+  </header>
+
+  <!-- MAIN STAGE -->
+  <main class="flex-1 flex flex-col p-3 md:p-6 max-w-7xl mx-auto w-full gap-6 mb-20 md:mb-6">
+    <div id="single-player-container" class="w-full bg-black/90 rounded-3xl overflow-hidden shadow-2xl border border-luban-border relative group aspect-video max-h-[68vh] flex items-center justify-center">
+      <video id="video-element" class="w-full h-full object-contain" playsinline controls></video>
+
+      <div id="player-quality-tag" class="absolute top-4 left-4 z-20 bg-black/70 backdrop-blur-xl px-3.5 py-1.5 rounded-2xl border border-luban-border flex items-center gap-2.5 text-xs font-mono">
+        <span class="w-2.5 h-2.5 rounded-full bg-emerald-400 animate-pulse"></span>
+        <span id="player-quality-text" class="text-luban-gold font-bold">Auto</span>
+        <span id="player-resolution-text" class="text-gray-400 hidden sm:inline">(جاري الكشف...)</span>
+      </div>
+
+      <div class="absolute top-4 right-4 z-20 bg-black/70 backdrop-blur-xl px-4 py-2 rounded-2xl border border-luban-border flex items-center gap-3 text-xs font-semibold text-gray-200">
+        <div class="w-7 h-7 rounded-xl bg-luban-emeraldDark/80 flex items-center justify-center border border-emerald-500/30">
+          <i data-lucide="radio" class="w-3.5 h-3.5 text-emerald-300"></i>
+        </div>
+        <div>
+          <span id="overlay-channel-title">لبان اي بي تي في</span>
+          <span id="overlay-epg-title" class="text-[10px] text-emerald-400 block font-normal">بث مستقر</span>
+        </div>
+      </div>
+    </div>
+
+    <!-- NOTIFICATION TOAST -->
+    <div id="toast" class="hidden fixed bottom-24 md:bottom-10 left-6 z-50 bg-luban-emeraldDark text-white px-5 py-3 rounded-2xl shadow-2xl flex items-center gap-3 border border-emerald-400/40 text-xs font-bold glow-emerald">
+      <i data-lucide="sparkles" class="w-4 h-4 text-luban-gold"></i>
+      <span id="toast-text"></span>
+    </div>
+
+    <!-- TAB 1: HOME -->
+    <section id="section-home" class="space-y-6">
+      <div class="flex items-center justify-between">
+        <div class="flex items-center gap-2.5">
+          <div class="w-8 h-8 rounded-xl bg-amber-500/10 border border-amber-500/20 flex items-center justify-center">
+            <i data-lucide="trophy" class="w-4 h-4 text-luban-gold"></i>
+          </div>
+          <div>
+            <h2 class="text-base font-bold text-white">مركز مباريات اليوم</h2>
+            <p class="text-[10px] text-gray-400">ربط مباشر مع قنوات البث المتاحة</p>
+          </div>
+        </div>
+        <span class="text-xs text-gray-400 font-mono px-3 py-1 rounded-xl bg-luban-glass border border-luban-border" id="current-date-display"></span>
+      </div>
+      <div id="matches-grid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4"></div>
+    </section>
+
+    <!-- TAB 2: LIVE TV -->
+    <section id="section-live" class="hidden space-y-4">
+      <div class="flex flex-col md:flex-row gap-3 justify-between items-center bg-luban-card backdrop-blur-xl p-3.5 rounded-2xl border border-luban-border">
+        <input type="text" id="channel-search" placeholder="ابحث باسم القناة..." oninput="filterChannels()" class="bg-black/40 border border-luban-border rounded-xl px-3 py-2 text-xs text-gray-200 focus:outline-none focus:border-luban-gold w-full md:w-80">
+        <select id="channel-group-select" onchange="filterChannels()" class="bg-black/40 border border-luban-border rounded-xl px-3 py-2 text-xs text-gray-200">
+          <option value="ALL">جميع الباقات</option>
+        </select>
+      </div>
+      <div id="channels-list" class="grid grid-cols-1 md:grid-cols-2 gap-3.5 max-h-[580px] overflow-y-auto pr-1"></div>
+    </section>
+
+    <!-- TAB 3: MOVIES -->
+    <section id="section-movies" class="hidden space-y-4">
+      <div class="flex justify-between items-center bg-luban-card backdrop-blur-xl p-3.5 rounded-2xl border border-luban-border">
+        <input type="text" id="movie-search" placeholder="ابحث في الأفلام..." oninput="filterMovies()" class="bg-black/40 border border-luban-border rounded-xl px-3 py-2 text-xs text-gray-200 w-full md:w-80">
+      </div>
+      <div id="movies-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 max-h-[580px] overflow-y-auto pr-1"></div>
+    </section>
+
+    <!-- TAB 4: SERIES -->
+    <section id="section-series" class="hidden space-y-4">
+      <div class="flex justify-between items-center bg-luban-card backdrop-blur-xl p-3.5 rounded-2xl border border-luban-border">
+        <input type="text" id="series-search" placeholder="ابحث في المسلسلات..." oninput="filterSeries()" class="bg-black/40 border border-luban-border rounded-xl px-3 py-2 text-xs text-gray-200 w-full md:w-80">
+      </div>
+      <div id="series-grid" class="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-6 gap-4 max-h-[580px] overflow-y-auto pr-1"></div>
+    </section>
+  </main>
+
+  <!-- SETTINGS SIDEBAR -->
+  <div id="sidebar-settings-backdrop" onclick="closeSettingsSidebar()" class="fixed inset-0 bg-black/80 backdrop-blur-md z-50 hidden"></div>
+  <aside id="sidebar-settings" class="fixed top-0 left-0 bottom-0 w-84 md:w-96 bg-luban-deep border-r border-luban-border z-50 transform -translate-x-full transition-transform duration-300 flex flex-col justify-between shadow-2xl">
+    <div class="p-6 overflow-y-auto space-y-6">
+      <div class="flex items-center justify-between border-b border-luban-border pb-4">
+        <h3 class="text-sm font-bold text-white flex items-center gap-2">
+          <i data-lucide="sliders-horizontal" class="w-4 h-4 text-luban-gold"></i>
+          <span>إعدادات النظام والسيرفر</span>
+        </h3>
+        <button onclick="closeSettingsSidebar()" class="text-gray-400 hover:text-white">✕</button>
+      </div>
+
+      <div class="bg-gradient-to-br from-luban-emeraldDark/60 via-luban-card to-black p-4 rounded-2xl border border-luban-gold/30">
+        <div class="flex items-center gap-3">
+          <div class="w-11 h-11 rounded-xl bg-luban-gold text-black flex items-center justify-center font-black text-sm">MF</div>
+          <div>
+            <h4 class="text-xs font-bold text-white flex items-center gap-1">
+              <span>Mohammed Fadhil</span>
+              <i data-lucide="badge-check" class="w-4 h-4 text-amber-400 fill-current"></i>
+            </h4>
+            <p class="text-[10px] text-gray-300 font-mono">الإصدار المعتمد: v4.5.0 Aesthetic Pro</p>
+          </div>
+        </div>
+      </div>
+
+      <form onsubmit="handleXtreamLogin(event)" class="space-y-3 pt-3 border-t border-luban-border">
+        <h4 class="text-xs font-bold text-gray-300">اتصال بسيرفر Xtream</h4>
+        <input type="text" id="setting-xtream-host" required placeholder="http://domain.com:8080" class="w-full bg-black/50 border border-luban-border rounded-xl px-3 py-2 text-xs text-white" dir="ltr">
+        <input type="text" id="setting-xtream-user" required placeholder="Username" class="w-full bg-black/50 border border-luban-border rounded-xl px-3 py-2 text-xs text-white" dir="ltr">
+        <input type="password" id="setting-xtream-pass" required placeholder="Password" class="w-full bg-black/50 border border-luban-border rounded-xl px-3 py-2 text-xs text-white" dir="ltr">
+        <button type="submit" id="btn-login-submit" class="w-full py-2.5 rounded-xl bg-luban-emeraldDark hover:bg-emerald-600 text-white text-xs font-bold transition glow-emerald">اتصال وتحميل القنوات</button>
+      </form>
+    </div>
+  </aside>
+
+  <script>
+    let hlsPlayer = null;
+    let liveChannels = [];
+    let moviesList = [];
+    let seriesList = [];
+    let isTvMode = false;
+
+    document.addEventListener('DOMContentLoaded', () => {
+      lucide.createIcons();
+      document.getElementById('current-date-display').textContent = new Date().toLocaleDateString('ar-EG', { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' });
+      initDpadNavigation();
+      loadSampleData();
+    });
+
+    function initDpadNavigation() {
+      window.addEventListener('keydown', (e) => {
+        const focusable = Array.from(document.querySelectorAll('.tv-focus-target:not([disabled])'));
+        const current = document.activeElement;
+        let index = focusable.indexOf(current);
+
+        if (['ArrowDown', 'ArrowUp', 'ArrowLeft', 'ArrowRight'].includes(e.key)) {
+          if (index === -1 && focusable.length > 0) {
+            focusable[0].focus();
+            return;
+          }
+          if (e.key === 'ArrowRight' || e.key === 'ArrowDown') {
+            const next = focusable[index + 1] || focusable[0];
+            next.focus();
+          } else if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') {
+            const prev = focusable[index - 1] || focusable[focusable.length - 1];
+            prev.focus();
+          }
+        }
+      });
+    }
+
+    function playStream(url, title) {
+      const video = document.getElementById('video-element');
+      document.getElementById('overlay-channel-title').textContent = title || 'بث مباشر';
+
+      if (Hls.isSupported()) {
+        if (hlsPlayer) hlsPlayer.destroy();
+        hlsPlayer = new Hls({ enableWorker: true, lowLatencyMode: true });
+        hlsPlayer.loadSource(url);
+        hlsPlayer.attachMedia(video);
+        hlsPlayer.on(Hls.Events.LEVEL_SWITCHED, (event, data) => {
+          const lvl = hlsPlayer.levels[data.level];
+          if (lvl) {
+            document.getElementById('player-quality-text').textContent = `${lvl.height}p`;
+            document.getElementById('player-resolution-text').textContent = `(${lvl.width}x${lvl.height})`;
+          }
+        });
+      } else {
+        video.src = url;
+      }
+      video.play().catch(e => console.log(e));
+      showToast(`جاري تشغيل: ${title}`);
+    }
+
+    function loadSampleData() {
+      liveChannels = [
+        { id: '1', name: 'beIN Sports 1 4K', url: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8', group: 'رياضة', epgNow: 'ريال مدريد ضد برشلونة', epgNext: 'الأستوديو التحليلي' },
+        { id: '2', name: 'beIN Sports 2 FHD', url: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8', group: 'رياضة', epgNow: 'مانشستر سيتي ضد ليفربول', epgNext: 'حصاد الدوري' },
+        { id: '3', name: 'SSC 1 HD', url: 'https://test-streams.mux.dev/x36xhzz/x36xhzz.m3u8', group: 'رياضة', epgNow: 'الهلال ضد النصر', epgNext: 'كواليس القمة' }
+      ];
+      renderChannels(liveChannels);
+    }
+
+    function renderChannels(channels) {
+      const list = document.getElementById('channels-list');
+      list.innerHTML = '';
+      channels.forEach(ch => {
+        const item = document.createElement('div');
+        item.tabIndex = 0;
+        item.className = "tv-focus-target bg-luban-card border border-luban-border rounded-2xl p-4 flex flex-col justify-between hover:border-luban-gold transition cursor-pointer";
+        item.onclick = () => playStream(ch.url, ch.name);
+        item.innerHTML = `
+          <div class="flex items-center justify-between mb-3">
+            <div class="flex items-center gap-3">
+              <div class="w-10 h-10 rounded-xl bg-black/60 flex items-center justify-center p-2 border border-luban-border">
+                <i data-lucide="radio" class="w-5 h-5 text-luban-gold"></i>
+              </div>
+              <div>
+                <h4 class="text-xs font-bold text-white">${ch.name}</h4>
+                <span class="text-[9px] text-gray-400 bg-black/40 px-2 py-0.5 rounded-full">${ch.group}</span>
+              </div>
+            </div>
+            <span class="text-[10px] font-mono px-2 py-0.5 rounded bg-emerald-500/10 text-emerald-400 border border-emerald-500/30 font-bold">4K UHD</span>
+          </div>
+          <div class="bg-black/40 rounded-xl p-2.5 border border-luban-border text-[10px] space-y-1.5">
+            <div class="flex justify-between items-center text-emerald-400 font-semibold">
+              <span class="flex items-center gap-1.5"><span class="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse"></span> الآن: ${ch.epgNow}</span>
+              <span class="text-gray-500">مباشر</span>
+            </div>
+          </div>
+        `;
+        list.appendChild(item);
+      });
+      lucide.createIcons();
+    }
+
+    function switchTab(tab) {
+      ['home', 'live', 'movies', 'series'].forEach(t => {
+        document.getElementById(`section-${t}`).classList.add('hidden');
+        const btn = document.getElementById(`tab-${t}`);
+        if (btn) {
+          btn.classList.remove('bg-luban-emeraldDark', 'text-white', 'glow-emerald');
+          btn.classList.add('text-gray-400');
+        }
+      });
+      document.getElementById(`section-${tab}`).classList.remove('hidden');
+      const active = document.getElementById(`tab-${tab}`);
+      if (active) {
+        active.classList.remove('text-gray-400');
+        active.classList.add('bg-luban-emeraldDark', 'text-white', 'glow-emerald');
+      }
+    }
+
+    function openSettingsSidebar() {
+      document.getElementById('sidebar-settings-backdrop').classList.remove('hidden');
+      document.getElementById('sidebar-settings').classList.remove('-translate-x-full');
+    }
+
+    function closeSettingsSidebar() {
+      document.getElementById('sidebar-settings-backdrop').classList.add('hidden');
+      document.getElementById('sidebar-settings').classList.add('-translate-x-full');
+    }
+
+    function showToast(msg) {
+      const t = document.getElementById('toast');
+      document.getElementById('toast-text').textContent = msg;
+      t.classList.remove('hidden');
+      setTimeout(() => t.classList.add('hidden'), 3500);
+    }
+  </script>
+</body>
+</html>
