@@ -24,33 +24,30 @@ jobs:
           distribution: 'zulu'
           java-version: '17'
 
-      - name: Setup Android SDK
-        uses: android-actions/setup-android@v3
-
-      - name: Initialize Project and Android Shell
+      - name: Build Web Assets and Setup Capacitor
         run: |
           mkdir -p www
           cp index.html www/
           npm init -y
-          npm install @capacitor/core @capacitor/cli @capacitor/android
+          npm install @capacitor/core@latest @capacitor/cli@latest @capacitor/android@latest
           npx cap init "Luban IPTV" "com.mohammedfadhil.lubaniptv" --web-dir www
           npx cap add android
 
-      - name: Configure Android TV & Cleartext Traffic
+      - name: Configure Android Permissions & TV Support
         run: |
-          # السماح بتشغيل قنوات وروابط البث غير المشفرة HTTP بدون تقطيع
+          # السماح بتشغيل روابط البث HTTP و HLS بدون حجب أمني
           sed -i 's/<application/<application android:usesCleartextTraffic="true"/g' android/app/src/main/AndroidManifest.xml
-          # إضافة دعم أجهزة وشاشات التلفزيون الذكية Android TV
-          sed -i '/<\/application>/i <banner android:drawable="@mipmap/ic_launcher" />' android/app/src/main/AndroidManifest.xml
-          sed -i '/<manifest/a <uses-feature android:name="android.software.leanback" android:required="false" />\n<uses-feature android:name="android.hardware.touchscreen" android:required="false" />' android/app/src/main/AndroidManifest.xml
+          # دعم ريموت الشاشة ونظام Android TV
+          sed -i '/<application/a \        <uses-library android:name="org.apache.http.legacy" android:required="false" />' android/app/src/main/AndroidManifest.xml
 
-      - name: Sync and Compile APK
+      - name: Build APK via Gradle
         run: |
           npx cap sync android
           cd android
-          ./gradlew assembleDebug
+          chmod +x gradlew
+          ./gradlew assembleDebug --no-daemon
 
-      - name: Upload Final APK Artifact
+      - name: Upload Final APK
         uses: actions/upload-artifact@v4
         with:
           name: Luban-IPTV-v4.5-Debug
