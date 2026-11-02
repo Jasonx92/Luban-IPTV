@@ -43,7 +43,7 @@ jobs:
           EOF
           npx cap add android
 
-      - name: Configure Android Permissions & TV Support
+      - name: Configure Android Permissions, TV Support and Landscape
         run: |
           node <<'EOF'
           const fs = require('fs');
@@ -62,6 +62,9 @@ jobs:
             m = m.replace('<category android:name="android.intent.category.LAUNCHER" />',
               '<category android:name="android.intent.category.LAUNCHER" />\n' +
               '                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />');
+          }
+          if (!m.includes('screenOrientation')) {
+            m = m.replace('<activity', '<activity android:screenOrientation="sensorLandscape"');
           }
           fs.writeFileSync(p, m);
           EOF
