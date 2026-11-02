@@ -124,7 +124,7 @@ button.chip.act{background:var(--gold);color:#111}
     <button class="f tile t3" onclick="openSec('series')"><i>🍿</i>المسلسلات</button>
     <button class="f tile t4" onclick="openMatches()"><i>⚽</i>مباريات اليوم</button>
   </div>
-  <div class="foot"><button class="f" onclick="refresh()">تحديث البيانات</button><button class="f" onclick="logout()">تسجيل الخروج</button></div>
+  <div class="foot"><button class="f" id="b-ext" onclick="toggleExt()"></button><button class="f" onclick="refresh()">تحديث البيانات</button><button class="f" onclick="logout()">تسجيل الخروج</button></div>
 </div>
 
 <div id="browse" class="scr">
@@ -163,7 +163,7 @@ button.chip.act{background:var(--gold);color:#111}
 
 <div id="player" class="scr">
   <video id="v" playsinline controls autoplay></video>
-  <div id="ptop"><button class="f" onclick="closePlayer()">رجوع</button><b id="p-title"></b></div>
+  <div id="ptop"><button class="f" onclick="closePlayer()">رجوع</button><button class="f" onclick="openVLC()">فتح في VLC</button><b id="p-title"></b></div>
 </div>
 
 <div id="modal"><div class="mbox"><div style="display:flex;justify-content:space-between;align-items:center;gap:10px;margin-bottom:8px"><b id="m-title"></b><button class="f" onclick="closeModal()">إغلاق</button></div><div class="mut" id="m-note" style="margin-bottom:8px"></div><div id="m-body" class="epw"></div></div></div>
@@ -173,7 +173,7 @@ button.chip.act{background:var(--gold);color:#111}
 <script>
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)],enc=encodeURIComponent;
 const SEC={live:{t:'البث المباشر',c:'get_live_categories',s:'get_live_streams'},movie:{t:'الأفلام',c:'get_vod_categories',s:'get_vod_streams'},series:{t:'المسلسلات',c:'get_series_categories',s:'get_series'}};
-let cfg=null,D={},cur='live',catId='all',hls=null,filt=[],shown=0,curList=[],curIdx=-1,zap=false,retScr='home',q=[],qt,tTimer,uTimer,TR={},curIt=null;
+let cfg=null,curUrl='',curTitle='',useExt=localStorage.getItem('luban_ext')==='1',D={},cur='live',catId='all',hls=null,filt=[],shown=0,curList=[],curIdx=-1,zap=false,retScr='home',q=[],qt,tTimer,uTimer,TR={},curIt=null;
 try{cfg=JSON.parse(localStorage.getItem('luban'))}catch(e){}
 try{TR=JSON.parse(localStorage.getItem('luban_tr')||'{}')}catch(e){}
 
@@ -352,6 +352,8 @@ function closeModal(){$('#modal').classList.remove('on')}
 
 /* player: native first, then hls.js, then raw .ts */
 function play(title,url){
+  curUrl=url;curTitle=title;
+  if(useExt&&window.Capacitor&&Capacitor.isNativePlatform&&Capacitor.isNativePlatform())return openVLC();
   $('#p-title').textContent=title;
   const on=$('.scr.on');if(on&&on.id!=='player')retScr=on.id;
   $$('.scr').forEach(s=>s.classList.toggle('on',s.id==='player'));
@@ -363,13 +365,20 @@ function play(title,url){
 function tryNext(){
   clearTimeout(qt);if(hls){hls.destroy();hls=null}
   const v=$('#v'),s=q.shift();
-  if(!s){v.removeAttribute('src');v.load();return toast('تعذر تشغيل هذا البث، جرّب قناة أخرى')}
+  if(!s){v.removeAttribute('src');v.load();return toast('تعذر تشغيل هذا البث، جرّب زر VLC أو قناة أخرى')}
   if(s.k==='h'){hls=new Hls({maxBufferLength:20});hls.loadSource(s.u);hls.attachMedia(v);hls.on(Hls.Events.ERROR,(e,d)=>{if(d.fatal)tryNext()})}
   else v.src=s.u;
   v.play().catch(()=>{});
   qt=setTimeout(()=>{if(v.readyState<2)tryNext()},9000)}
 $('#v').onerror=()=>tryNext();
 $('#v').onplaying=()=>clearTimeout(qt);
+async function openVLC(){
+  if(!(window.Capacitor&&Capacitor.registerPlugin))return toast('المشغّل الخارجي يعمل داخل التطبيق فقط');
+  const v=$('#v');v.pause();
+  try{await Capacitor.registerPlugin('ExternalPlayer').play({url:curUrl,title:curTitle,package:'org.videolan.vlc'})}
+  catch(e){toast(e&&e.message==='not_installed'?'ثبّت VLC من متجر Play أولاً':'تعذر فتح المشغّل الخارجي')}}
+function updExt(){$('#b-ext').textContent='المشغّل: '+(useExt?'VLC الخارجي':'الداخلي')}
+function toggleExt(){useExt=!useExt;localStorage.setItem('luban_ext',useExt?'1':'0');updExt();toast(useExt?'سيتم التشغيل عبر VLC':'سيتم التشغيل داخل التطبيق')}
 function flash(){const p=$('#player');p.classList.add('ui');clearTimeout(uTimer);uTimer=setTimeout(()=>p.classList.remove('ui'),4000)}
 function closePlayer(){q=[];clearTimeout(qt);const v=$('#v');v.pause();if(hls){hls.destroy();hls=null}v.removeAttribute('src');v.load();show(retScr)}
 
@@ -406,7 +415,7 @@ addEventListener('keydown',e=>{
   e.preventDefault();move(k)});
 
 function tick(){$('#clock').textContent=new Date().toLocaleTimeString('en-GB',{hour:'2-digit',minute:'2-digit'})}
-tick();setInterval(tick,30000);
+tick();updExt();setInterval(tick,30000);
 if(cfg)doLogin(cfg);else show('login');
 </script>
 </body>
