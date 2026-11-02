@@ -43,6 +43,11 @@ jobs:
           EOF
           npx cap add android
 
+      - name: Force App Name
+        run: |
+          sed -i 's|<string name="app_name">.*</string>|<string name="app_name">Luban IPTV</string>|' android/app/src/main/res/values/strings.xml
+          sed -i 's|<string name="title_activity_main">.*</string>|<string name="title_activity_main">Luban IPTV</string>|' android/app/src/main/res/values/strings.xml
+
       - name: Configure Android Permissions, TV Support and Landscape
         run: |
           node <<'EOF'
@@ -79,5 +84,5 @@ jobs:
       - name: Upload Final APK
         uses: actions/upload-artifact@v4
         with:
-          name: Luban-IPTV-v4.5-Debug
+          name: Luban-IPTV-Debug
           path: android/app/build/outputs/apk/debug/app-debug.apk
