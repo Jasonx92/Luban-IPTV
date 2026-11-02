@@ -71,7 +71,70 @@ jobs:
           if (!m.includes('screenOrientation')) {
             m = m.replace('<activity', '<activity android:screenOrientation="sensorLandscape"');
           }
+          if (!m.includes('<queries>')) {
+            m = m.replace('</manifest>',
+              '    <queries>\n' +
+              '        <package android:name="org.videolan.vlc" />\n' +
+              '    </queries>\n' +
+              '</manifest>');
+          }
           fs.writeFileSync(p, m);
+          EOF
+
+      - name: Add External Player Plugin
+        run: |
+          D=android/app/src/main/java/com/mohammedfadhil/lubaniptv
+          cat > $D/ExternalPlayerPlugin.java <<'EOF'
+          package com.mohammedfadhil.lubaniptv;
+
+          import android.content.ActivityNotFoundException;
+          import android.content.Intent;
+          import android.net.Uri;
+          import com.getcapacitor.Plugin;
+          import com.getcapacitor.PluginCall;
+          import com.getcapacitor.PluginMethod;
+          import com.getcapacitor.annotation.CapacitorPlugin;
+
+          @CapacitorPlugin(name = "ExternalPlayer")
+          public class ExternalPlayerPlugin extends Plugin {
+            @PluginMethod
+            public void play(PluginCall call) {
+              String url = call.getString("url");
+              String title = call.getString("title", "");
+              String pkg = call.getString("package", "");
+              if (url == null) { call.reject("no_url"); return; }
+              Intent i = new Intent(Intent.ACTION_VIEW);
+              i.setDataAndType(Uri.parse(url), "video/*");
+              i.putExtra("title", title);
+              if (pkg != null && !pkg.isEmpty()) i.setPackage(pkg);
+              try {
+                getActivity().startActivity(i);
+                call.resolve();
+              } catch (ActivityNotFoundException e) {
+                try {
+                  i.setPackage(null);
+                  getActivity().startActivity(Intent.createChooser(i, "Open with"));
+                  call.resolve();
+                } catch (Exception e2) {
+                  call.reject("not_installed");
+                }
+              }
+            }
+          }
+          EOF
+          cat > $D/MainActivity.java <<'EOF'
+          package com.mohammedfadhil.lubaniptv;
+
+          import android.os.Bundle;
+          import com.getcapacitor.BridgeActivity;
+
+          public class MainActivity extends BridgeActivity {
+            @Override
+            public void onCreate(Bundle savedInstanceState) {
+              registerPlugin(ExternalPlayerPlugin.class);
+              super.onCreate(savedInstanceState);
+            }
+          }
           EOF
 
       - name: Build APK via Gradle
