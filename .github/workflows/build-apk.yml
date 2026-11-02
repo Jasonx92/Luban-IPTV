@@ -29,20 +29,42 @@ jobs:
           mkdir -p www
           cp index.html www/
           npm init -y
-          npm install @capacitor/core@latest @capacitor/cli@latest @capacitor/android@latest
+          npm install @capacitor/core@8 @capacitor/cli@8 @capacitor/android@8 hls.js@1.5.13
+          cp node_modules/hls.js/dist/hls.min.js www/
           npx cap init "Luban IPTV" "com.mohammedfadhil.lubaniptv" --web-dir www
+          node <<'EOF'
+          const fs = require('fs');
+          const f = 'capacitor.config.json';
+          const c = JSON.parse(fs.readFileSync(f, 'utf8'));
+          c.server = { androidScheme: 'http', cleartext: true };
+          c.plugins = { CapacitorHttp: { enabled: true } };
+          c.android = { allowMixedContent: true };
+          fs.writeFileSync(f, JSON.stringify(c, null, 2));
+          EOF
           npx cap add android
 
       - name: Configure Android Permissions & TV Support
         run: |
-          MANIFEST=android/app/src/main/AndroidManifest.xml
-          # Allow cleartext HTTP streams (HLS etc.)
-          sed -i '0,/<application/s//<application android:usesCleartextTraffic="true"/' $MANIFEST
-          # Optional legacy HTTP library (inside <application>)
-          sed -i '/<application/,/>/{/>/a \        <uses-library android:name="org.apache.http.legacy" android:required="false" />
-          }' $MANIFEST
-          # Android TV / remote support
-          sed -i '0,/<application/s//<uses-feature android:name="android.software.leanback" android:required="false" \/>\n    <uses-feature android:name="android.hardware.touchscreen" android:required="false" \/>\n    <application/' $MANIFEST
+          node <<'EOF'
+          const fs = require('fs');
+          const p = 'android/app/src/main/AndroidManifest.xml';
+          let m = fs.readFileSync(p, 'utf8');
+          if (!m.includes('usesCleartextTraffic')) {
+            m = m.replace('<application', '<application android:usesCleartextTraffic="true"');
+          }
+          if (!m.includes('android.software.leanback')) {
+            m = m.replace('<application',
+              '<uses-feature android:name="android.software.leanback" android:required="false" />\n' +
+              '    <uses-feature android:name="android.hardware.touchscreen" android:required="false" />\n' +
+              '    <application');
+          }
+          if (!m.includes('LEANBACK_LAUNCHER')) {
+            m = m.replace('<category android:name="android.intent.category.LAUNCHER" />',
+              '<category android:name="android.intent.category.LAUNCHER" />\n' +
+              '                <category android:name="android.intent.category.LEANBACK_LAUNCHER" />');
+          }
+          fs.writeFileSync(p, m);
+          EOF
 
       - name: Build APK via Gradle
         run: |
