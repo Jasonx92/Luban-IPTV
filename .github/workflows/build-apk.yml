@@ -16,13 +16,13 @@ jobs:
       - name: Setup Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
 
       - name: Setup Java JDK
         uses: actions/setup-java@v4
         with:
-          distribution: 'zulu'
-          java-version: '17'
+          distribution: 'temurin'
+          java-version: '21'
 
       - name: Build Web Assets and Setup Capacitor
         run: |
@@ -35,10 +35,14 @@ jobs:
 
       - name: Configure Android Permissions & TV Support
         run: |
-          # السماح بتشغيل روابط البث HTTP و HLS بدون حجب أمني
-          sed -i 's/<application/<application android:usesCleartextTraffic="true"/g' android/app/src/main/AndroidManifest.xml
-          # دعم ريموت الشاشة ونظام Android TV
-          sed -i '/<application/a \        <uses-library android:name="org.apache.http.legacy" android:required="false" />' android/app/src/main/AndroidManifest.xml
+          MANIFEST=android/app/src/main/AndroidManifest.xml
+          # Allow cleartext HTTP streams (HLS etc.)
+          sed -i '0,/<application/s//<application android:usesCleartextTraffic="true"/' $MANIFEST
+          # Optional legacy HTTP library (inside <application>)
+          sed -i '/<application/,/>/{/>/a \        <uses-library android:name="org.apache.http.legacy" android:required="false" />
+          }' $MANIFEST
+          # Android TV / remote support
+          sed -i '0,/<application/s//<uses-feature android:name="android.software.leanback" android:required="false" \/>\n    <uses-feature android:name="android.hardware.touchscreen" android:required="false" \/>\n    <application/' $MANIFEST
 
       - name: Build APK via Gradle
         run: |
