@@ -174,7 +174,7 @@ button.chip.act{background:var(--gold);color:#111}
 <script>
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)],enc=encodeURIComponent;
 const SEC={live:{t:'البث المباشر',c:'get_live_categories',s:'get_live_streams'},movie:{t:'الأفلام',c:'get_vod_categories',s:'get_vod_streams'},series:{t:'المسلسلات',c:'get_series_categories',s:'get_series'}};
-let cfg=null,curUrl='',curTitle='',useExt=localStorage.getItem('luban_ext')==='1',D={},cur='live',catId='all',hls=null,filt=[],shown=0,curList=[],curIdx=-1,zap=false,retScr='home',q=[],qt,tTimer,uTimer,TR={},curIt=null;
+let lastErr='',cfg=null,curUrl='',curTitle='',eng=localStorage.getItem('luban_eng')||'exo',D={},cur='live',catId='all',hls=null,filt=[],shown=0,curList=[],curIdx=-1,zap=false,retScr='home',q=[],qt,tTimer,uTimer,TR={},curIt=null;
 try{cfg=JSON.parse(localStorage.getItem('luban'))}catch(e){}
 try{TR=JSON.parse(localStorage.getItem('luban_tr')||'{}')}catch(e){}
 
@@ -355,7 +355,8 @@ function closeModal(){$('#modal').classList.remove('on')}
 /* player: native first, then hls.js, then raw .ts */
 function play(title,url){
   curUrl=url;curTitle=title;
-  if(useExt&&window.Capacitor&&Capacitor.isNativePlatform&&Capacitor.isNativePlatform())return openVLC();
+  if(isNat()&&eng==='exo')return openExo();
+  if(isNat()&&eng==='vlc')return openVLC();
   $('#p-title').textContent=title;
   const on=$('.scr.on');if(on&&on.id!=='player')retScr=on.id;
   $$('.scr').forEach(s=>s.classList.toggle('on',s.id==='player'));
@@ -367,20 +368,27 @@ function play(title,url){
 function tryNext(){
   clearTimeout(qt);if(hls){hls.destroy();hls=null}
   const v=$('#v'),s=q.shift();
-  if(!s){v.removeAttribute('src');v.load();return toast('تعذر تشغيل هذا البث، جرّب زر VLC أو قناة أخرى')}
-  if(s.k==='h'){hls=new Hls({maxBufferLength:20});hls.loadSource(s.u);hls.attachMedia(v);hls.on(Hls.Events.ERROR,(e,d)=>{if(d.fatal)tryNext()})}
+  if(!s){v.removeAttribute('src');v.load();return toast('تعذر تشغيل هذا البث ('+lastErr+')، جرّب زر VLC')}
+  if(s.k==='h'){hls=new Hls({maxBufferLength:20});hls.loadSource(s.u);hls.attachMedia(v);hls.on(Hls.Events.ERROR,(e,d)=>{if(d.fatal){lastErr='hls: '+d.details+(d.response?' '+d.response.code:'');tryNext()}})}
   else v.src=s.u;
   v.play().catch(()=>{});
   qt=setTimeout(()=>{if(v.readyState<2)tryNext()},9000)}
-$('#v').onerror=()=>tryNext();
+$('#v').onerror=()=>{const v=$('#v');lastErr='media code '+(v.error?v.error.code:'?');tryNext()};
 $('#v').onplaying=()=>clearTimeout(qt);
 async function openVLC(){
   if(!(window.Capacitor&&Capacitor.registerPlugin))return toast('المشغّل الخارجي يعمل داخل التطبيق فقط');
   const v=$('#v');v.pause();
   try{await Capacitor.registerPlugin('ExternalPlayer').play({url:curUrl,title:curTitle,package:'org.videolan.vlc'})}
   catch(e){toast(e&&e.message==='not_installed'?'ثبّت VLC من متجر Play أولاً':'تعذر فتح المشغّل الخارجي')}}
-function updExt(){$('#b-ext').textContent='المشغّل: '+(useExt?'VLC الخارجي':'الداخلي')}
-function toggleExt(){useExt=!useExt;localStorage.setItem('luban_ext',useExt?'1':'0');updExt();toast(useExt?'سيتم التشغيل عبر VLC':'سيتم التشغيل داخل التطبيق')}
+const UA='VLC/3.0.20 LibVLC/3.0.20',isNat=()=>!!(window.Capacitor&&Capacitor.isNativePlatform&&Capacitor.isNativePlatform());
+const ENG={exo:'ExoPlayer (مدمج)',vlc:'VLC الخارجي',web:'المتصفح'};
+function updExt(){$('#b-ext').textContent='المشغّل: '+ENG[eng]}
+function toggleExt(){const o=['exo','vlc','web'];eng=o[(o.indexOf(eng)+1)%3];localStorage.setItem('luban_eng',eng);updExt();toast('المشغّل: '+ENG[eng])}
+async function openExo(){
+  let urls=[curUrl],titles=[curTitle],index=0;
+  if(zap&&curList.length>1){const a=Math.max(0,curIdx-150),w=curList.slice(a,Math.min(curList.length,curIdx+150));urls=w.map(urlFor);titles=w.map(x=>x.name);index=curIdx-a}
+  try{await Capacitor.registerPlugin('NativePlayer').play({urls,titles,index,ua:UA})}
+  catch(e){toast('تعذر فتح المشغّل المدمج: '+(e&&e.message||''))}}
 function flash(){const p=$('#player');p.classList.add('ui');clearTimeout(uTimer);uTimer=setTimeout(()=>p.classList.remove('ui'),4000)}
 function closePlayer(){q=[];clearTimeout(qt);const v=$('#v');v.pause();if(hls){hls.destroy();hls=null}v.removeAttribute('src');v.load();show(retScr)}
 
