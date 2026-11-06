@@ -99,6 +99,7 @@ button.chip.act{background:var(--gold);color:#111}
 <div id="login" class="scr">
   <div class="box">
     <div class="logo">Luban IPTV</div>
+    <div id="lerr" style="display:none;background:#3a1620;border:1px solid #e0486a;color:#ffb3c2;border-radius:10px;padding:8px 10px;font-size:12px;line-height:1.6;user-select:text;direction:ltr;text-align:left"></div>
     <div class="tabs">
       <button class="f act" id="t-x" onclick="setType('xtream')">Xtream</button>
       <button class="f" id="t-m" onclick="setType('m3u')">رابط M3U</button>
@@ -187,8 +188,9 @@ const fixHost=h=>{h=h.trim().replace(/\/+$/,'');return /^https?:\/\//i.test(h)?h
 function submitLogin(e,type){e.preventDefault();doLogin(type==='xtream'?{type,host:fixHost($('#x-host').value),user:$('#x-user').value.trim(),pass:$('#x-pass').value}:{type,url:$('#m-url').value.trim()})}
 
 async function api(a,x=''){
-  const r=await fetch(`${cfg.host}/player_api.php?username=${enc(cfg.user)}&password=${enc(cfg.pass)}${a?'&action='+a:''}${x}`);
-  if(!r.ok)throw 0;return r.json()}
+  const nat=window.Capacitor&&Capacitor.isNativePlatform&&Capacitor.isNativePlatform();
+  const r=await fetch(`${cfg.host}/player_api.php?username=${enc(cfg.user)}&password=${enc(cfg.pass)}${a?'&action='+a:''}${x}`,nat?{headers:{'User-Agent':'VLC/3.0.20 LibVLC/3.0.20'}}:{});
+  if(!r.ok)throw new Error('HTTP '+r.status);return r.json()}
 
 async function loadM3U(){
   const t=await(await fetch(cfg.url)).text(),items=[],cats={};let m=null;
@@ -199,7 +201,7 @@ async function loadM3U(){
   D.live={cats:Object.keys(cats).map(n=>({id:n,name:n})),items}}
 
 async function doLogin(c){
-  const old=cfg;cfg=c;D={};busy(1);
+  const old=cfg;cfg=c;D={};busy(1);$('#lerr').style.display='none';
   try{
     if(c.type==='m3u')await loadM3U();
     else{
@@ -210,7 +212,7 @@ async function doLogin(c){
     localStorage.setItem('luban',JSON.stringify(cfg));
     $('#exp').textContent=cfg.exp?'ينتهي الاشتراك: '+new Date(cfg.exp*1000).toLocaleDateString('ar'):'';
     show('home')
-  }catch(e){toast(typeof e==='string'?e:'تعذر الاتصال بالسيرفر'+(e&&e.message?' ('+e.message+')':''));cfg=old&&old!==c?old:null;if(!$('#home.on'))show('login')}
+  }catch(e){const em=typeof e==='string'?e:'تعذر الاتصال بالسيرفر'+(e&&e.message?' ('+e.message+')':'');toast(em);const le=$('#lerr');le.textContent=em+(typeof e==='string'?'':' | '+(c.host||c.url||''));le.style.display='block';cfg=old&&old!==c?old:null;if(!$('#home.on'))show('login')}
   busy(0)}
 
 async function load(sec){
