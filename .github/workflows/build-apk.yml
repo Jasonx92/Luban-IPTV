@@ -185,38 +185,113 @@ jobs:
           package com.mohammedfadhil.lubaniptv;
 
           import android.app.Activity;
+          import android.app.AlertDialog;
+          import android.graphics.Color;
           import android.net.Uri;
           import android.os.Bundle;
+          import android.text.TextUtils;
+          import android.view.Gravity;
           import android.view.KeyEvent;
           import android.view.View;
+          import android.view.ViewGroup;
           import android.view.WindowManager;
+          import android.widget.ArrayAdapter;
+          import android.widget.Button;
+          import android.widget.FrameLayout;
+          import android.widget.LinearLayout;
+          import android.widget.ListView;
+          import android.widget.TextView;
           import android.widget.Toast;
+          import androidx.media3.common.C;
+          import androidx.media3.common.Format;
           import androidx.media3.common.MediaItem;
           import androidx.media3.common.PlaybackException;
           import androidx.media3.common.Player;
+          import androidx.media3.common.TrackSelectionOverride;
+          import androidx.media3.common.TrackSelectionParameters;
+          import androidx.media3.common.Tracks;
+          import androidx.media3.common.VideoSize;
           import androidx.media3.datasource.DefaultHttpDataSource;
           import androidx.media3.exoplayer.ExoPlayer;
           import androidx.media3.exoplayer.source.DefaultMediaSourceFactory;
           import androidx.media3.ui.PlayerView;
+          import java.util.ArrayList;
+          import java.util.List;
 
           public class PlayerActivity extends Activity {
             private ExoPlayer player;
             private PlayerView view;
+            private TextView info;
+            private LinearLayout bar;
+            private ListView list;
             private String[] urls, titles;
             private int idx;
             private boolean triedTs;
 
+            private int dp(int v) {
+              return (int) (v * getResources().getDisplayMetrics().density);
+            }
+
+            private Button btn(String t, View.OnClickListener l) {
+              Button b = new Button(this);
+              b.setText(t);
+              b.setAllCaps(false);
+              b.setOnClickListener(l);
+              return b;
+            }
+
             @Override
-            protected void onCreate(Bundle b) {
-              super.onCreate(b);
+            protected void onCreate(Bundle saved) {
+              super.onCreate(saved);
               getWindow().addFlags(WindowManager.LayoutParams.FLAG_KEEP_SCREEN_ON);
               urls = getIntent().getStringArrayExtra("urls");
               titles = getIntent().getStringArrayExtra("titles");
               idx = getIntent().getIntExtra("index", 0);
               String ua = getIntent().getStringExtra("ua");
+
+              FrameLayout root = new FrameLayout(this);
+              root.setLayoutDirection(View.LAYOUT_DIRECTION_LTR);
               view = new PlayerView(this);
-              setContentView(view);
+              root.addView(view, new FrameLayout.LayoutParams(-1, -1));
+
+              bar = new LinearLayout(this);
+              bar.setOrientation(LinearLayout.HORIZONTAL);
+              bar.setGravity(Gravity.CENTER_VERTICAL);
+              bar.setBackgroundColor(0xAA000000);
+              bar.setPadding(dp(14), dp(6), dp(14), dp(6));
+              info = new TextView(this);
+              info.setTextColor(Color.WHITE);
+              info.setTextSize(14);
+              bar.addView(info, new LinearLayout.LayoutParams(0, -2, 1f));
+              if (urls.length > 1) bar.addView(btn("☰ القنوات", v -> showList()));
+              bar.addView(btn("⚙ الجودة", v -> showQuality()));
+              root.addView(bar, new FrameLayout.LayoutParams(-1, -2, Gravity.TOP));
+
+              list = new ListView(this);
+              list.setBackgroundColor(0xF0101726);
+              list.setVisibility(View.GONE);
+              list.setAdapter(new ArrayAdapter<String>(this, android.R.layout.simple_list_item_1, titles) {
+                @Override
+                public View getView(int pos, View cv, ViewGroup parent) {
+                  TextView t = (TextView) super.getView(pos, cv, parent);
+                  t.setTextColor(pos == idx ? 0xFFF5A623 : Color.WHITE);
+                  t.setBackgroundColor(pos == idx ? 0x33F5A623 : 0);
+                  t.setTextSize(14);
+                  t.setSingleLine(true);
+                  t.setEllipsize(TextUtils.TruncateAt.END);
+                  return t;
+                }
+              });
+              list.setOnItemClickListener((p, v, pos, id) -> {
+                idx = pos;
+                triedTs = false;
+                hideList();
+                start();
+              });
+              root.addView(list, new FrameLayout.LayoutParams(dp(300), -1, Gravity.END));
+              setContentView(root);
               hideBars();
+
               DefaultHttpDataSource.Factory f = new DefaultHttpDataSource.Factory()
                   .setUserAgent(ua == null ? "VLC/3.0.20 LibVLC/3.0.20" : ua)
                   .setAllowCrossProtocolRedirects(true)
@@ -226,6 +301,7 @@ jobs:
                   .setMediaSourceFactory(new DefaultMediaSourceFactory(f))
                   .build();
               view.setPlayer(player);
+              view.setControllerVisibilityListener((PlayerView.ControllerVisibilityListener) vis -> bar.setVisibility(vis));
               player.addListener(new Player.Listener() {
                 @Override
                 public void onPlayerError(PlaybackException e) {
@@ -238,37 +314,120 @@ jobs:
                   }
                   Toast.makeText(PlayerActivity.this, "Error: " + e.getErrorCodeName(), Toast.LENGTH_LONG).show();
                 }
+
+                @Override
+                public void onVideoSizeChanged(VideoSize vs) {
+                  refreshInfo();
+                }
+
+                @Override
+                public void onPlaybackStateChanged(int st) {
+                  if (st == Player.STATE_READY) refreshInfo();
+                }
               });
               start();
+            }
+
+            private String name() {
+              return (titles != null && idx < titles.length) ? titles[idx] : "";
+            }
+
+            private void refreshInfo() {
+              StringBuilder s = new StringBuilder(name());
+              VideoSize vs = player.getVideoSize();
+              if (vs.height > 0) {
+                String tag = vs.height >= 2000 ? "4K" : vs.height >= 1000 ? "FHD" : vs.height >= 700 ? "HD" : "SD";
+                s.append("  •  ").append(vs.width).append("×").append(vs.height).append(" ").append(tag);
+                Format fm = player.getVideoFormat();
+                if (fm != null && fm.frameRate > 0) s.append("  •  ").append(Math.round(fm.frameRate)).append("fps");
+                if (fm != null && fm.bitrate > 0) s.append("  •  ").append(fm.bitrate / 1000).append(" kbps");
+              }
+              info.setText(s.toString());
             }
 
             private void start() {
               player.setMediaItem(MediaItem.fromUri(Uri.parse(urls[idx])));
               player.prepare();
               player.play();
-              if (titles != null && idx < titles.length) {
-                Toast.makeText(this, titles[idx], Toast.LENGTH_SHORT).show();
+              info.setText(name());
+              view.showController();
+            }
+
+            private void showList() {
+              list.setVisibility(View.VISIBLE);
+              ((ArrayAdapter<?>) list.getAdapter()).notifyDataSetChanged();
+              list.setSelection(idx);
+              list.requestFocus();
+            }
+
+            private void hideList() {
+              list.setVisibility(View.GONE);
+            }
+
+            private void showQuality() {
+              List<String> names = new ArrayList<>();
+              List<TrackSelectionOverride> ov = new ArrayList<>();
+              names.add("تلقائي");
+              ov.add(null);
+              for (Tracks.Group g : player.getCurrentTracks().getGroups()) {
+                if (g.getType() != C.TRACK_TYPE_VIDEO) continue;
+                for (int i = 0; i < g.length; i++) {
+                  if (!g.isTrackSupported(i)) continue;
+                  Format fm = g.getTrackFormat(i);
+                  names.add(fm.height + "p" + (fm.bitrate > 0 ? "  (" + (fm.bitrate / 1000) + " kbps)" : ""));
+                  ov.add(new TrackSelectionOverride(g.getMediaTrackGroup(), i));
+                }
               }
+              if (names.size() <= 2) {
+                Toast.makeText(this, "هذا البث بجودة واحدة فقط", Toast.LENGTH_SHORT).show();
+                return;
+              }
+              new AlertDialog.Builder(this)
+                  .setTitle("الجودة")
+                  .setItems(names.toArray(new String[0]), (d, w) -> {
+                    TrackSelectionParameters.Builder tb = player.getTrackSelectionParameters()
+                        .buildUpon().clearOverridesOfType(C.TRACK_TYPE_VIDEO);
+                    if (ov.get(w) != null) tb.addOverride(ov.get(w));
+                    player.setTrackSelectionParameters(tb.build());
+                  })
+                  .show();
             }
 
             @Override
             public boolean dispatchKeyEvent(KeyEvent e) {
-              if (urls.length > 1 && e.getAction() == KeyEvent.ACTION_DOWN) {
+              if (list.getVisibility() == View.VISIBLE) return super.dispatchKeyEvent(e);
+              if (e.getAction() == KeyEvent.ACTION_DOWN) {
                 int k = e.getKeyCode();
-                if (k == KeyEvent.KEYCODE_DPAD_UP || k == KeyEvent.KEYCODE_CHANNEL_UP) {
-                  idx = (idx - 1 + urls.length) % urls.length;
-                  triedTs = false;
-                  start();
+                if (k == KeyEvent.KEYCODE_MENU) {
+                  showQuality();
                   return true;
                 }
-                if (k == KeyEvent.KEYCODE_DPAD_DOWN || k == KeyEvent.KEYCODE_CHANNEL_DOWN) {
-                  idx = (idx + 1) % urls.length;
-                  triedTs = false;
-                  start();
-                  return true;
+                if (urls.length > 1) {
+                  if (k == KeyEvent.KEYCODE_DPAD_UP || k == KeyEvent.KEYCODE_CHANNEL_UP) {
+                    idx = (idx - 1 + urls.length) % urls.length;
+                    triedTs = false;
+                    start();
+                    return true;
+                  }
+                  if (k == KeyEvent.KEYCODE_DPAD_DOWN || k == KeyEvent.KEYCODE_CHANNEL_DOWN) {
+                    idx = (idx + 1) % urls.length;
+                    triedTs = false;
+                    start();
+                    return true;
+                  }
+                  if (k == KeyEvent.KEYCODE_DPAD_LEFT || k == KeyEvent.KEYCODE_DPAD_RIGHT) {
+                    showList();
+                    return true;
+                  }
                 }
               }
               return super.dispatchKeyEvent(e);
+            }
+
+            @Override
+            public void onBackPressed() {
+              if (list.getVisibility() == View.VISIBLE) hideList();
+              else super.onBackPressed();
             }
 
             private void hideBars() {
@@ -279,6 +438,12 @@ jobs:
                   | View.SYSTEM_UI_FLAG_LAYOUT_STABLE
                   | View.SYSTEM_UI_FLAG_LAYOUT_FULLSCREEN
                   | View.SYSTEM_UI_FLAG_LAYOUT_HIDE_NAVIGATION);
+            }
+
+            @Override
+            public void onWindowFocusChanged(boolean hasFocus) {
+              super.onWindowFocusChanged(hasFocus);
+              if (hasFocus) hideBars();
             }
 
             @Override
