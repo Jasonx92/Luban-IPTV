@@ -35,6 +35,10 @@ form{display:flex;flex-direction:column;gap:8px}
 .t1{background:linear-gradient(160deg,#0d4a39,#101726)}.t2{background:linear-gradient(160deg,#59380a,#101726)}
 .t3{background:linear-gradient(160deg,#233468,#101726)}.t4{background:linear-gradient(160deg,#5a1f3a,#101726)}
 .foot{display:flex;gap:10px;padding:0 20px 12px}
+.nav{display:flex;gap:8px;padding:0 20px 8px;flex:none}.nav button{flex:1;font-weight:700}
+.act2{display:flex;gap:8px;align-items:center}
+h3{font-size:15px;margin:8px 4px 2px;color:var(--gold)}
+.hrow{display:flex;gap:10px;overflow-x:auto;padding:6px 4px 10px}.hrow .card{flex:none;width:104px}.hrow .mc{width:230px}
 /* browse */
 .row{display:flex;flex:1;min-height:0}
 aside{width:180px;flex:none;background:var(--panel);border-left:1px solid var(--line);overflow-y:auto;padding:8px;display:flex;flex-direction:column;gap:4px}
@@ -69,7 +73,7 @@ aside button.act{background:#1b2640;border-color:var(--gold);color:var(--gold)}
 .dw{position:relative;display:flex;flex-direction:column;height:100%}
 .dc{flex:1;min-height:0;display:flex;gap:18px;padding:0 20px 14px}
 #d-poster{width:150px;align-self:flex-start;border-radius:12px;border:1px solid var(--line);aspect-ratio:2/3;object-fit:cover;background:#0b111d}
-.di{flex:1;min-width:0;overflow-y:auto;display:flex;flex-direction:column;gap:9px}
+.di{flex:1;min-width:0;overflow-y:auto;padding:4px;display:flex;flex-direction:column;gap:9px}
 .di h1{font-size:22px}
 .chips{display:flex;flex-wrap:wrap;gap:6px}
 .chip{background:#1b2640;border:1px solid var(--line);border-radius:999px;padding:2px 10px;font-size:12px}
@@ -118,14 +122,19 @@ button.chip.act{background:var(--gold);color:#111}
 </div>
 
 <div id="home" class="scr">
-  <div class="top"><div><div class="logo">Luban IPTV</div><div class="mut" id="exp"></div></div><div class="mut" id="clock" dir="ltr"></div></div>
-  <div class="tiles">
-    <button class="f tile t1" onclick="openSec('live')"><i>📺</i>البث المباشر</button>
-    <button class="f tile t2" onclick="openSec('movie')"><i>🎬</i>الأفلام</button>
-    <button class="f tile t3" onclick="openSec('series')"><i>🍿</i>المسلسلات</button>
-    <button class="f tile t4" onclick="openMatches()"><i>⚽</i>مباريات اليوم</button>
+  <div class="top"><div><div class="logo">Luban IPTV</div><div class="mut" id="exp"></div></div>
+    <div class="act2"><button class="f" id="b-ext" onclick="toggleExt()"></button><button class="f" onclick="refresh()">تحديث</button><button class="f" onclick="logout()">خروج</button><span class="mut" id="clock" dir="ltr"></span></div></div>
+  <div class="nav">
+    <button class="f" onclick="openSec('live')">📺 البث المباشر</button>
+    <button class="f" onclick="openSec('movie')">🎬 الأفلام</button>
+    <button class="f" onclick="openSec('series')">🍿 المسلسلات</button>
+    <button class="f" onclick="openMatches()">⚽ المباريات</button>
   </div>
-  <div class="foot"><button class="f" id="b-ext" onclick="toggleExt()"></button><button class="f" onclick="refresh()">تحديث البيانات</button><button class="f" onclick="logout()">تسجيل الخروج</button></div>
+  <div class="scroll">
+    <h3>المباريات الحالية والقادمة</h3><div id="h-matches" class="hrow"></div>
+    <div id="hs-movies"><h3>أحدث الأفلام</h3><div id="h-movies" class="hrow"></div></div>
+    <div id="hs-series"><h3>أحدث المسلسلات</h3><div id="h-series" class="hrow"></div></div>
+  </div>
 </div>
 
 <div id="browse" class="scr">
@@ -146,15 +155,15 @@ button.chip.act{background:var(--gold);color:#111}
 <div id="detail" class="scr">
   <div id="d-bg"></div>
   <div class="dw">
-    <div class="bar"><button class="f" onclick="show('browse')">رجوع</button></div>
+    <div class="bar"><button class="f" onclick="show(detBack)">رجوع</button></div>
     <div class="dc">
       <img id="d-poster" alt="">
       <div class="di">
         <h1 id="d-title"></h1>
         <div class="chips" id="d-meta"></div>
+        <div id="d-act" class="epw"></div>
         <div id="d-plot"></div>
         <div class="mut" id="d-cast"></div>
-        <div id="d-act" class="epw"></div>
         <div id="d-seasons" class="epw"></div>
         <div id="d-eps" class="epw"></div>
       </div>
@@ -174,7 +183,7 @@ button.chip.act{background:var(--gold);color:#111}
 <script>
 const $=s=>document.querySelector(s),$$=s=>[...document.querySelectorAll(s)],enc=encodeURIComponent;
 const SEC={live:{t:'البث المباشر',c:'get_live_categories',s:'get_live_streams'},movie:{t:'الأفلام',c:'get_vod_categories',s:'get_vod_streams'},series:{t:'المسلسلات',c:'get_series_categories',s:'get_series'}};
-let lastErr='',cfg=null,curUrl='',curTitle='',eng=localStorage.getItem('luban_eng')||'exo',D={},cur='live',catId='all',hls=null,filt=[],shown=0,curList=[],curIdx=-1,zap=false,retScr='home',q=[],qt,tTimer,uTimer,TR={},curIt=null;
+let detBack='browse',lastErr='',cfg=null,curUrl='',curTitle='',eng=localStorage.getItem('luban_eng')||'exo',D={},cur='live',catId='all',hls=null,filt=[],shown=0,curList=[],curIdx=-1,zap=false,retScr='home',q=[],qt,tTimer,uTimer,TR={},curIt=null;
 try{cfg=JSON.parse(localStorage.getItem('luban'))}catch(e){}
 try{TR=JSON.parse(localStorage.getItem('luban_tr')||'{}')}catch(e){}
 
@@ -182,7 +191,7 @@ function toast(m){const t=$('#toast');t.textContent=m;t.style.display='block';cl
 function busy(on){$('#busy').classList.toggle('on',!!on)}
 function show(id){
   $$('.scr').forEach(s=>s.classList.toggle('on',s.id===id));
-  setTimeout(()=>{if(id==='player')return;const r=$('#'+id);const f=r.querySelector(id==='browse'?'#grid .f':id==='detail'?'#d-act .f':'.f')||r.querySelector('.f');if(f)f.focus()},60)}
+  setTimeout(()=>{if(id==='player')return;const r=$('#'+id);const f=r.querySelector(id==='browse'?'#grid .f':id==='detail'?'#d-act .f':id==='home'?'.nav .f':'.f')||r.querySelector('.f');if(f)f.focus()},60)}
 function setType(t){$('#f-x').style.display=t==='xtream'?'flex':'none';$('#f-m').style.display=t==='m3u'?'flex':'none';$('#t-x').classList.toggle('act',t==='xtream');$('#t-m').classList.toggle('act',t==='m3u')}
 const fixHost=h=>{h=h.trim().replace(/\/+$/,'');return /^https?:\/\//i.test(h)?h:'http://'+h};
 function submitLogin(e,type){e.preventDefault();doLogin(type==='xtream'?{type,host:fixHost($('#x-host').value),user:$('#x-user').value.trim(),pass:$('#x-pass').value}:{type,url:$('#m-url').value.trim()})}
@@ -211,14 +220,15 @@ async function doLogin(c){
       if(!j.user_info||j.user_info.auth!=1)throw 'بيانات الدخول غير صحيحة';cfg.exp=j.user_info.exp_date}
     localStorage.setItem('luban',JSON.stringify(cfg));
     $('#exp').textContent=cfg.exp?'ينتهي الاشتراك: '+new Date(cfg.exp*1000).toLocaleDateString('ar'):'';
-    show('home')
+    show('home');loadHome()
   }catch(e){const em=typeof e==='string'?e:'تعذر الاتصال بالسيرفر'+(e&&e.message?' ('+e.message+')':'');toast(em);const le=$('#lerr');le.textContent=em+(typeof e==='string'?'':' | '+(c.host||c.url||''));le.style.display='block';cfg=old&&old!==c?old:null;if(!$('#home.on'))show('login')}
   busy(0)}
 
-async function load(sec){
-  if(D[sec])return;
+const PL={};
+function load(sec){return D[sec]?Promise.resolve():(PL[sec]||(PL[sec]=_load(sec).finally(()=>{delete PL[sec]})))}
+async function _load(sec){
   const S=SEC[sec],[c,s]=await Promise.all([api(S.c),api(S.s)]);
-  D[sec]={cats:c.map(x=>({id:String(x.category_id),name:x.category_name})),items:s.map(x=>({t:sec,name:x.name,logo:x.stream_icon||x.cover,cat:String(x.category_id),id:x.stream_id||x.series_id,ext:x.container_extension,rating:x.rating}))}}
+  D[sec]={cats:c.map(x=>({id:String(x.category_id),name:x.category_name})),items:s.map(x=>({t:sec,name:x.name,logo:x.stream_icon||x.cover,cat:String(x.category_id),id:x.stream_id||x.series_id,ext:x.container_extension,rating:x.rating,added:+(x.added||x.last_modified||0)}))}}
 
 async function openSec(sec){
   if(cfg.type==='m3u'&&sec!=='live')return toast('الأفلام والمسلسلات غير متوفرة مع روابط M3U');
@@ -274,6 +284,7 @@ async function tr(t){
     return o}catch(e){return t}}
 
 async function openDetail(it){
+  const w=$('.scr.on');if(w&&w.id!=='detail')detBack=w.id;
   busy(1);
   try{
     let info={},eps=null;
@@ -318,19 +329,36 @@ function renderSeason(it,eps,s){
 
 /* today's matches */
 const tsOf=e=>{let s=e.strTimestamp||(e.dateEvent+'T'+(e.strTime||'00:00:00'));if(!/Z|\+/.test(s))s+='Z';return new Date(s)};
+const isLive=e=>{const d=Date.now()-tsOf(e);return d>=0&&d<125*60000&&!/finish|FT|postp|cancel|abandon/i.test(e.strStatus||'')};
+const rk=e=>isLive(e)?0:(Date.now()<tsOf(e)?1:2);
+async function fetchMatches(){
+  const d=new Date().toLocaleDateString('en-CA');
+  const j=await(await fetch(`https://www.thesportsdb.com/api/v1/json/123/eventsday.php?d=${d}&s=Soccer`)).json();
+  return(j.events||[]).sort((a,b)=>rk(a)-rk(b)||tsOf(a)-tsOf(b))}
 async function openMatches(){
   show('matches');const g=$('#mgrid');g.innerHTML='<div class="empty">جاري تحميل المباريات...</div>';
-  try{
-    const d=new Date().toLocaleDateString('en-CA');
-    const j=await(await fetch(`https://www.thesportsdb.com/api/v1/json/123/eventsday.php?d=${d}&s=Soccer`)).json();
-    const ev=(j.events||[]).sort((a,b)=>tsOf(a)-tsOf(b));g.innerHTML='';
+  try{const ev=await fetchMatches();g.innerHTML='';
     if(!ev.length){g.innerHTML='<div class="empty">لا توجد مباريات مسجلة لهذا اليوم</div>';return}
     ev.forEach(e=>g.append(mcard(e)));const f=g.querySelector('.f');if(f)f.focus()
   }catch(e){g.innerHTML='<div class="empty">تعذر تحميل المباريات، تحقق من الإنترنت</div>'}}
-
+async function homeMatches(){
+  const el=$('#h-matches');el.innerHTML='<div class="empty">جاري التحميل...</div>';
+  try{const ev=(await fetchMatches()).filter(e=>rk(e)<2).slice(0,12);el.innerHTML='';
+    if(!ev.length)el.innerHTML='<div class="empty">لا توجد مباريات حالية أو قادمة اليوم</div>';
+    ev.forEach(e=>el.append(mcard(e)))}
+  catch(e){el.innerHTML='<div class="empty">تعذر تحميل المباريات</div>'}}
+function fillRow(el,items){el.innerHTML='';items.forEach(i=>el.append(card(i)))}
+async function loadHome(){
+  homeMatches();
+  const m=cfg.type==='m3u';$('#hs-movies').style.display=$('#hs-series').style.display=m?'none':'block';
+  if(m)return;
+  for(const [sec,id] of [['movie','#h-movies'],['series','#h-series']]){
+    const el=$(id);el.innerHTML='<div class="empty">جاري التحميل...</div>';
+    try{await load(sec);fillRow(el,D[sec].items.slice().sort((a,b)=>b.added-a.added).slice(0,24))}
+    catch(e){el.innerHTML='<div class="empty">تعذر التحميل</div>'}}}
 function mcard(e){
   const b=document.createElement('button');b.className='f card mc';
-  const lg=document.createElement('div');lg.className='lg';lg.textContent=e.strLeague||'';
+  const lg=document.createElement('div');lg.className='lg';lg.textContent=(isLive(e)?'🔴 مباشر الآن · ':'')+(e.strLeague||'');
   const row=document.createElement('div');row.className='tm';
   const team=(n,img)=>{const t=document.createElement('div');t.className='tn';if(img){const i=new Image();i.src=img;i.onerror=()=>i.remove();t.append(i)}const s=document.createElement('span');s.textContent=n;t.append(s);return t};
   const sc=document.createElement('div');sc.className='sc';
@@ -376,10 +404,11 @@ function tryNext(){
 $('#v').onerror=()=>{const v=$('#v');lastErr='media code '+(v.error?v.error.code:'?');tryNext()};
 $('#v').onplaying=()=>clearTimeout(qt);
 async function openVLC(){
-  if(!(window.Capacitor&&Capacitor.registerPlugin))return toast('المشغّل الخارجي يعمل داخل التطبيق فقط');
+  if(!plug('ExternalPlayer'))return toast('المشغّل الخارجي غير متاح، حدّث التطبيق');
   const v=$('#v');v.pause();
-  try{await Capacitor.registerPlugin('ExternalPlayer').play({url:curUrl,title:curTitle,package:'org.videolan.vlc'})}
+  try{await plug('ExternalPlayer').play({url:curUrl,title:curTitle,package:'org.videolan.vlc'})}
   catch(e){toast(e&&e.message==='not_installed'?'ثبّت VLC من متجر Play أولاً':'تعذر فتح المشغّل الخارجي')}}
+const plug=n=>{const C=window.Capacitor;return C&&((C.Plugins&&C.Plugins[n])||(typeof C.registerPlugin==='function'?C.registerPlugin(n):null))};
 const UA='VLC/3.0.20 LibVLC/3.0.20',isNat=()=>!!(window.Capacitor&&Capacitor.isNativePlatform&&Capacitor.isNativePlatform());
 const ENG={exo:'ExoPlayer (مدمج)',vlc:'VLC الخارجي',web:'المتصفح'};
 function updExt(){$('#b-ext').textContent='المشغّل: '+ENG[eng]}
@@ -387,12 +416,12 @@ function toggleExt(){const o=['exo','vlc','web'];eng=o[(o.indexOf(eng)+1)%3];loc
 async function openExo(){
   let urls=[curUrl],titles=[curTitle],index=0;
   if(zap&&curList.length>1){const a=Math.max(0,curIdx-150),w=curList.slice(a,Math.min(curList.length,curIdx+150));urls=w.map(urlFor);titles=w.map(x=>x.name);index=curIdx-a}
-  try{await Capacitor.registerPlugin('NativePlayer').play({urls,titles,index,ua:UA})}
+  try{await plug('NativePlayer').play({urls,titles,index,ua:UA})}
   catch(e){toast('تعذر فتح المشغّل المدمج: '+(e&&e.message||''))}}
 function flash(){const p=$('#player');p.classList.add('ui');clearTimeout(uTimer);uTimer=setTimeout(()=>p.classList.remove('ui'),4000)}
 function closePlayer(){q=[];clearTimeout(qt);const v=$('#v');v.pause();if(hls){hls.destroy();hls=null}v.removeAttribute('src');v.load();show(retScr)}
 
-function refresh(){D={};if(cfg.type==='m3u'){busy(1);loadM3U().then(()=>toast('تم التحديث')).catch(()=>toast('فشل التحديث')).finally(()=>busy(0))}else toast('سيُعاد تحميل البيانات عند فتح كل قسم')}
+function refresh(){D={};const p=cfg.type==='m3u'?(busy(1),loadM3U().finally(()=>busy(0))):Promise.resolve();p.then(()=>{toast('تم التحديث');loadHome()}).catch(()=>toast('فشل التحديث'))}
 function logout(){localStorage.removeItem('luban');cfg=null;D={};show('login')}
 
 /* remote / D-pad */
@@ -406,11 +435,11 @@ function move(d){
     const b=e.getBoundingClientRect(),x=b.left+b.width/2-cx,y=b.top+b.height/2-cy;let p,s;
     if(d==='ArrowRight'){p=x;s=y}else if(d==='ArrowLeft'){p=-x;s=y}else if(d==='ArrowDown'){p=y;s=x}else{p=-y;s=x}
     if(p<=2)continue;const sc=p+Math.abs(s)*2;if(sc<bs){bs=sc;best=e}}
-  if(best){best.focus();best.scrollIntoView({block:'nearest'})}}
+  if(best){best.focus();best.scrollIntoView({block:'nearest',inline:'nearest'})}}
 function goBack(){
   if($('#modal.on'))return closeModal();
   if($('#player.on'))return closePlayer();
-  if($('#detail.on'))return show('browse');
+  if($('#detail.on'))return show(detBack);
   if($('#browse.on')||$('#matches.on'))return show('home')}
 addEventListener('keydown',e=>{
   const k=e.key,inInput=document.activeElement&&document.activeElement.tagName==='INPUT';
